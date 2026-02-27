@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Навчальний Тенажер</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #00cec9;
+            --bg: #f0f3f7;
+            --text: #2d3436;
+            --white: #ffffff;
+            --success: #00b894;
+            --danger: #d63031;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Головне меню */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .btn-big {
+            padding: 40px 20px;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+            color: white;
+        }
+
+        .btn-parents { background: var(--primary); }
+        .btn-child { background: var(--secondary); }
+        .btn-big:hover { transform: translateY(-5px); opacity: 0.9; }
+
+        /* Модальне вікно / Секції */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--danger);
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            margin-bottom: 15px;
+            resize: none;
+        }
+
+        .btn-action {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        /* Тест */
+        .question-box { font-size: 2rem; margin: 30px 0; font-weight: bold; }
+        .input-answer {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Результати */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .score { font-size: 3rem; color: var(--primary); font-weight: bold; margin: 10px 0; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="main-menu">
+            <h1>Привіт! Хто ти сьогодні?</h1>
+            <div class="menu-grid">
+                <button class="btn-big btn-parents" onclick="showSection('parent-panel')">Батьки</button>
+                <button class="btn-big btn-child" onclick="startTest()">Дитина</button>
+            </div>
+        </div>
+
+        <div id="parent-panel" class="hidden">
+            <div class="modal-header">
+                <h2>Налаштування тесту</h2>
+                <button class="close-btn" onclick="showSection('main-menu')">&times;</button>
+            </div>
+            <p>Введіть питання у форматі: <b>Питання = Відповідь</b><br>(по одному на рядок, макс. 100)</p>
+            <textarea id="questions-input" placeholder="2 + 2 = 4&#10;5 * 5 = 25&#10;Столиця України? = Київ"></textarea>
+            <button class="btn-action" onclick="saveQuestions()">Зберегти та почати тест</button>
+        </div>
+
+        <div id="test-panel" class="hidden">
+            <div id="progress">Питання 1 з X</div>
+            <div class="question-box" id="current-question">---</div>
+            <input type="text" id="user-answer" class="input-answer" placeholder="Твоя відповідь..." autocomplete="off">
+            <button class="btn-action" onclick="nextQuestion()">Далі</button>
+        </div>
+
+        <div id="result-panel" class="hidden">
+            <h2>Твій результат:</h2>
+            <div class="score" id="final-grade">0</div>
+            <p>балів за 12-бальною шкалою</p>
+            <div class="stats-grid">
+                <div>✅ Правильно: <span id="correct-count">0</span></div>
+                <div>❌ Помилок: <span id="wrong-count">0</span></div>
+                <div>🎯 Точність: <span id="accuracy">0%</span></div>
+            </div>
+            <button class="btn-action" style="background: var(--primary);" onclick="showSection('main-menu')">На головну</button>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentIndex = 0;
+        let correctAnswers = 0;
+
+        // Навігація між секціями
+        function showSection(id) {
+            document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // Збереження питань
+        function saveQuestions() {
+            const text = document.getElementById('questions-input').value.trim();
+            if (!text) {
+                alert("Будь ласка, введіть хоча б одне питання!");
+                return;
+            }
+
+            const lines = text.split('\n').slice(0, 100);
+            questions = lines.map(line => {
+                const parts = line.split('=');
+                return {
+                    q: parts[0] ? parts[0].trim() : "Без питання",
+                    a: parts[1] ? parts[1].trim().toLowerCase() : ""
+                };
+            });
+
+            startTest();
+        }
+
+        // Початок тесту
+        function startTest() {
+            if (questions.length === 0) {
+                alert("Спочатку батьки мають ввести питання!");
+                showSection('parent-panel');
+                return;
+            }
+            currentIndex = 0;
+            correctAnswers = 0;
+            showSection('test-panel');
+            renderQuestion();
+        }
+
+        // Відображення поточного питання
+        function renderQuestion() {
+            document.getElementById('progress').innerText = `Питання ${currentIndex + 1} з ${questions.length}`;
+            document.getElementById('current-question').innerText = questions[currentIndex].q;
+            document.getElementById('user-answer').value = '';
+            document.getElementById('user-answer').focus();
+        }
+
+        // Логіка переходу до наступного питання
+        function nextQuestion() {
+            const userAnswer = document.getElementById('user-answer').value.trim().toLowerCase();
+            
+            if (userAnswer === questions[currentIndex].a) {
+                correctAnswers++;
+            }
+
+            currentIndex++;
+
+            if (currentIndex < questions.length) {
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        // Обробка клавіші Enter
+        document.getElementById('user-answer').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') nextQuestion();
+        });
+
+        // Показ результатів
+        function showResults() {
+            showSection('result-panel');
+            const total = questions.length;
+            const accuracy = Math.round((correctAnswers / total) * 100);
+            
+            // Розрахунок 12-бальної шкали
+            const grade = Math.round((correctAnswers / total) * 12);
+
+            document.getElementById('final-grade').innerText = grade;
+            document.getElementById('correct-count').innerText = correctAnswers;
+            document.getElementById('wrong-count').innerText = total - correctAnswers;
+            document.getElementById('accuracy').innerText = accuracy + '%';
+        }
+    </script>
+</body>
+</html>
+
