@@ -1,0 +1,16 @@
+{
+  "name": "Max History Trainer",
+  "short_name": "MaxHistory",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#4834d4",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3594/3594021.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
